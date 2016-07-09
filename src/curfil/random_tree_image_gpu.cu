@@ -31,7 +31,7 @@
 #include <cuda_runtime_api.h>
 #include <curand_kernel.h>
 #include <set>
-#include <tbb/mutex.h>
+//#include <tbb/mutex.h>
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
 
@@ -47,10 +47,10 @@ texture<int, cudaTextureType2DLayered, cudaReadModeElementType> depthTexture;
 
 texture<float, cudaTextureType2DLayered, cudaReadModeElementType> treeTexture;
 
-tbb::mutex initMutex;
+//tbb::mutex initMutex;
 volatile bool initialized = false;
 
-tbb::mutex textureMutex;
+//tbb::mutex textureMutex;
 
 const static int NUM_STREAMS = 2;
 cudaStream_t streams[NUM_STREAMS] = { NULL, NULL };
@@ -1417,7 +1417,7 @@ void classifyImage(int treeCacheSize, cuv::ndarray<float, cuv::dev_memory_space>
     std::set<const RGBDImage*> images;
     images.insert(&image);
 
-    tbb::mutex::scoped_lock lock(textureMutex);
+ //   tbb::mutex::scoped_lock lock(textureMutex);
 
     utils::Profile profileClassifyImage("classifyImage");
 
@@ -1747,7 +1747,7 @@ void ImageFeatureEvaluation::initDevice() {
     CURFIL_INFO("GPU Device " << currentDeviceId << ": " << prop.name);
 
     {
-        tbb::mutex::scoped_lock initLock(initMutex);
+     //   tbb::mutex::scoped_lock initLock(initMutex);
         if (!initialized) {
             for (int i = 0; i < NUM_STREAMS; i++) {
                 cudaSafeCall(cudaStreamCreate(&streams[i]));
@@ -1792,7 +1792,7 @@ std::vector<std::vector<const PixelInstance*> > ImageFeatureEvaluation::prepare(
 
     assert(hostSamples.size() > 0);
 
-    textureMutex.lock();
+ //   textureMutex.lock();
 
     utils::Timer prepareTime;
 
@@ -1844,7 +1844,7 @@ std::vector<std::vector<const PixelInstance*> > ImageFeatureEvaluation::prepare(
     node.setTimerValue("prepareBatches", prepareTime);
 
     if (!keepMutexLocked) {
-        textureMutex.unlock();
+    //    textureMutex.unlock();
     }
 
     return batches;
@@ -1899,7 +1899,7 @@ ImageFeaturesAndThresholds<cuv::dev_memory_space> ImageFeatureEvaluation::genera
     unsigned int numFeatures = configuration.getFeatureCount();
     unsigned int numThresholds = configuration.getThresholds();
 
-    tbb::mutex::scoped_lock textureLock(textureMutex);
+  //  tbb::mutex::scoped_lock textureLock(textureMutex);
 
     Samples<cuv::dev_memory_space> samplesOnDevice = copySamplesToDevice(samples, streams[0]);
 
@@ -2020,7 +2020,7 @@ cuv::ndarray<WeightType, cuv::dev_memory_space> ImageFeatureEvaluation::calculat
             unsigned int batchSize = currentBatch.size();
 
             if (batch > 0) {
-                textureMutex.lock();
+    //            textureMutex.lock();
             }
 
             Samples<cuv::dev_memory_space> sampleData = copySamplesToDevice(currentBatch, streams[0]);
@@ -2080,7 +2080,7 @@ cuv::ndarray<WeightType, cuv::dev_memory_space> ImageFeatureEvaluation::calculat
             node.addTimerValue("featureResponse", featureResponseTimer);
             node.setTimerValue((boost::format("batch%d.featureResponse") % batch).str(), featureResponseTimer);
 
-            textureMutex.unlock();
+         //   textureMutex.unlock();
 
             utils::Timer aggregateHistogramsTimer;
 

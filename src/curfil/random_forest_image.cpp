@@ -29,8 +29,8 @@
 
 #include <boost/shared_ptr.hpp>
 #include <cassert>
-#include <tbb/parallel_for_each.h>
-#include <tbb/task_scheduler_init.h>
+//#include <tbb/parallel_for_each.h>
+//#include <tbb/task_scheduler_init.h>
 #include <vector>
 
 #include "image.h"
@@ -55,10 +55,10 @@ RandomForestImage::RandomForestImage(const std::vector<std::string>& treeFiles,
 
     std::vector<TrainingConfiguration> configurations(treeFiles.size());
 
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, treeFiles.size(), 1),
-            [&](const tbb::blocked_range<size_t>& range) {
+ //   tbb::parallel_for(tbb::blocked_range<size_t>(0, treeFiles.size(), 1),
+  //          [&](const tbb::blocked_range<size_t>& range) {
 
-                for(size_t tree = range.begin(); tree != range.end(); tree++) {
+                for(size_t tree = 0; tree != treeFiles.size(); tree++) {
                     CURFIL_INFO("reading tree " << tree << " from " << treeFiles[tree]);
 
                     boost::shared_ptr<RandomTreeImage> randomTree;
@@ -81,7 +81,7 @@ RandomForestImage::RandomForestImage(const std::vector<std::string>& treeFiles,
                     CURFIL_INFO(*randomTree);
                 }
 
-            });
+         //   });
 
     for (size_t i = 1; i < treeFiles.size(); i++) {
         bool strict = false;
@@ -139,7 +139,7 @@ void RandomForestImage::train(const std::vector<LabeledRGBDImage>& trainLabelIma
     const size_t treeCount = ensemble.size();
 
     const int numThreads = configuration.getNumThreads();
-    tbb::task_scheduler_init init(numThreads);
+   // tbb::task_scheduler_init init(numThreads);
 
     CURFIL_INFO("learning image tree ensemble. " << treeCount << " trees with " << numThreads << " threads");
 
@@ -174,11 +174,11 @@ void RandomForestImage::train(const std::vector<LabeledRGBDImage>& trainLabelIma
                 CURFIL_INFO("finished tree " << tree->getId() << " with random seed " << seed << " in " << timer.format(3));
             };
 
-    if (!trainTreesSequentially && numThreads > 1) {
-        tbb::parallel_for_each(ensemble.begin(), ensemble.end(), train);
-    } else {
+ //   if (!trainTreesSequentially && numThreads > 1) {
+  //      tbb::parallel_for_each(ensemble.begin(), ensemble.end(), train);
+  //  } else {
         std::for_each(ensemble.begin(), ensemble.end(), train);
-    }
+  //  }
 }
 
 void RandomForestImage::updateTreesHistograms()
@@ -307,9 +307,9 @@ LabelImage RandomForestImage::predict(const RGBDImage& image,
     } else {
         utils::Profile profile("classifyImagesCPU");
 
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, image.getHeight()),
-                [&](const tbb::blocked_range<size_t>& range) {
-                    for(size_t y = range.begin(); y != range.end(); y++) {
+   //     tbb::parallel_for(tbb::blocked_range<size_t>(0, image.getHeight()),
+   //             [&](const tbb::blocked_range<size_t>& range) {
+                    for(size_t y = 0; y != image.getHeight(); y++) {
                         for(int x=0; x < image.getWidth(); x++) {
 
                             for (LabelType label = 0; label < numClasses; label++) {
@@ -341,7 +341,7 @@ LabelImage RandomForestImage::predict(const RGBDImage& image,
                             }
                         }
                     }
-                });
+            //    });
     }
 
     if (probabilities) {

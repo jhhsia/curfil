@@ -30,10 +30,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <iomanip>
-#include <tbb/mutex.h>
-#include <tbb/parallel_for_each.h>
-#include <tbb/parallel_for.h>
-
+//#include <tbb/mutex.h>
+//#include <tbb/parallel_for_each.h>
+//#include <tbb/parallel_for.h>
+#include <limits>
 #include "image.h"
 #include "ndarray_ops.h"
 #include "random_forest_image.h"
@@ -224,7 +224,7 @@ void test(RandomForestImage& randomForest, const std::string& folderTesting,
         CURFIL_INFO("label: " << static_cast<int>(labelColor.first) << ", color: RGB(" << color << ")");
     }
 
-    tbb::mutex totalMutex;
+  //  tbb::mutex totalMutex;
     utils::Average averageAccuracy;
     utils::Average averageAccuracyWithoutVoid;
 
@@ -258,9 +258,10 @@ void test(RandomForestImage& randomForest, const std::string& folderTesting,
     const LabelType numClasses = randomForest.getNumClasses();
     ConfusionMatrix totalConfusionMatrix(numClasses, ignoredLabels);
     double totalPredictionTime = 0;
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, filenames.size(), grainSize),
-            [&](const tbb::blocked_range<size_t>& range) {
-                for(size_t fileNr = range.begin(); fileNr != range.end(); fileNr++) {
+    {
+  //  tbb::parallel_for(tbb::blocked_range<size_t>(0, filenames.size(), grainSize),
+  //          [&](const tbb::blocked_range<size_t>& range) {
+                for(size_t fileNr = 0; fileNr != filenames.size(); fileNr++) {
                     const std::string& filename = filenames[fileNr];
                     const auto imageLabelPair = loadImagePair(filename, useCIELab, useDepthImages, useDepthFilling);
                     const RGBDImage& testImage = imageLabelPair.getRGBDImage();
@@ -321,7 +322,8 @@ void test(RandomForestImage& randomForest, const std::string& folderTesting,
                     for(int y = 0; y < probabilityImage.getHeight(); y++) {
                         for(int x = 0; x < probabilityImage.getWidth(); x++) {
                             const float& probability = probabilities(label, y, x);
-                            probabilityImage.setDepth(x, y, Depth(probability * std::numeric_limits<int>::max(char16_t)));
+                            Depth depth(probability * std::numeric_limits<int>::max() );
+                            probabilityImage.setDepth(x, y, depth );
                         }
                     }
                     const std::string filename = (boost::format("%s_label_%d.png") % basepath % static_cast<int>(label)).str();
@@ -332,7 +334,7 @@ void test(RandomForestImage& randomForest, const std::string& folderTesting,
             int thisNumber;
 
             {
-                tbb::mutex::scoped_lock total(totalMutex);
+              //  tbb::mutex::scoped_lock total(totalMutex);
                 thisNumber = i++;
             }
 
@@ -349,7 +351,7 @@ void test(RandomForestImage& randomForest, const std::string& folderTesting,
             double accuracy = calculatePixelAccuracy(prediction, groundTruth, true, &ignoredLabels);
             double accuracyWithoutVoid = calculatePixelAccuracy(prediction, groundTruth, false,  &ignoredLabels, &confusionMatrix);
 
-            tbb::mutex::scoped_lock lock(totalMutex);
+//            tbb::mutex::scoped_lock lock(totalMutex);
 
             CURFIL_INFO("prediction " << (thisNumber + 1) << "/" << filenames.size()
                     << " (" << testImage.getFilename() << "): pixel accuracy (without void): " << 100 * accuracy
@@ -361,10 +363,11 @@ void test(RandomForestImage& randomForest, const std::string& folderTesting,
             totalConfusionMatrix += confusionMatrix;
         }
 
-    });
+  //  });
+    }
     CURFIL_INFO(totalPredictionTime / filenames.size()<<" ms/image");
 
-    tbb::mutex::scoped_lock lock(totalMutex);
+  //  tbb::mutex::scoped_lock lock(totalMutex);
     double accuracy = averageAccuracy.getAverage();
     double accuracyWithoutVoid = averageAccuracyWithoutVoid.getAverage();
 

@@ -26,7 +26,7 @@
 #######################################################################################
 #endif
 #include <boost/program_options.hpp>
-#include <tbb/task_scheduler_init.h>
+//#include <tbb/task_scheduler_init.h>
 
 #include "export.h"
 #include "train.h"
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     ("numThresholds", po::value<uint16_t>(&numThresholds)->required(), "number of thresholds to evaluate")
     ("outputFolder", po::value<std::string>(&outputFolder)->default_value(outputFolder),
             "folder to output predictions and trees")
-    ("numThreads", po::value<int>(&numThreads)->default_value(tbb::task_scheduler_init::default_num_threads()),
+    ("numThreads", po::value<int>(&numThreads)->default_value(5),
             "number of threads")
     ("useCIELab", po::value<bool>(&useCIELab)->implicit_value(true)->default_value(useCIELab),
             "convert images to CIElab color space")
@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
 
     utils::Profile::setEnabled(profiling);
 
-    tbb::task_scheduler_init init(numThreads);
+   // tbb::task_scheduler_init init(numThreads);
 
     size_t numLabels; //added because otherwise when hyperopt randomly splits the training images, the number of classes is wrong
 

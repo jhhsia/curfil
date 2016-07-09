@@ -31,8 +31,8 @@
 #include <map>
 #include <math.h>
 #include <set>
-#include <tbb/mutex.h>
-#include <tbb/parallel_for_each.h>
+//#include <tbb/mutex.h>
+//#include <tbb/parallel_for_each.h>
 #include <thrust/gather.h>
 #include <thrust/sort.h>
 
@@ -55,17 +55,19 @@ public:
             size_t numThresholds,
             const std::vector<const PixelInstance*>& samples,
             const ImageFeaturesAndThresholds<cuv::host_memory_space>& features,
-            tbb::concurrent_vector<cuv::ndarray<WeightType, cuv::host_memory_space>>& perClassHistograms) :
+            std::vector< cuv::ndarray<WeightType, cuv::host_memory_space > > & perClassHistograms
+    ):
             numClasses(numClasses),
                     numFeatures(numFeatures),
                     numThresholds(numThresholds),
-                    samples(samples), features(features), perClassHistograms(perClassHistograms) {
+                    samples(samples), features(features), perClassHistograms(perClassHistograms
+                    ) {
 
         assert(!samples.empty());
     }
 
     // must be a const-method for TBB
-    void operator()(const tbb::blocked_range<size_t>& range) const {
+    void Run(const int size ) const {
 
         cuv::ndarray<WeightType, cuv::host_memory_space> perClassHistogram(
                 cuv::extents[numClasses][numFeatures][numThresholds][2]);
@@ -94,7 +96,7 @@ public:
         const unsigned int featureStride = perClassHistogram.stride(1);
         const unsigned int thresholdsStride = perClassHistogram.stride(2);
 
-        for (size_t s = range.begin(); s != range.end(); s++) {
+        for (size_t s = 0; s != size; s++) {
             const PixelInstance* sample = samples[s];
             assert(sample);
             const LabelType label = sample->getLabel();
@@ -162,7 +164,8 @@ private:
     const size_t numThresholds;
     const std::vector<const PixelInstance*>& samples;
     const ImageFeaturesAndThresholds<cuv::host_memory_space>& features;
-    tbb::concurrent_vector<cuv::ndarray<WeightType, cuv::host_memory_space> >& perClassHistograms;
+   // tbb::concurrent_vector<cuv::ndarray<WeightType, cuv::host_memory_space> >& perClassHistograms;
+   std::vector< cuv::ndarray<WeightType, cuv::host_memory_space >> & perClassHistograms;
 };
 
 bool ImageFeatureFunction::operator==(const ImageFeatureFunction& other) const {
@@ -295,16 +298,16 @@ std::vector<SplitFunction<PixelInstance, ImageFeatureFunction> > ImageFeatureEva
 
     CURFIL_INFO("generating random features: " << generatingRandomFeaturesTimer.format(2));
 
-    tbb::mutex cpuEvaluationMutex;
+ //   tbb::mutex cpuEvaluationMutex;
 
     size_t grainSize = 1;
     if (accelerationMode != CPU_ONLY) {
         // GPU: use two threads
         grainSize = ceil(samplesPerNode.size() / 2.0);
     }
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, samplesPerNode.size(), grainSize),
-            [&](const tbb::blocked_range<size_t>& range) {
-                for(size_t nodeNr = range.begin(); nodeNr != range.end(); nodeNr++) {
+//    tbb::parallel_for(tbb::blocked_range<size_t>(0, samplesPerNode.size(), grainSize),
+//            [&](const tbb::blocked_range<size_t>& range) {
+                for(size_t nodeNr = 0; nodeNr != samplesPerNode.size(); grainSize++) {
 
                     const std::pair<boost::shared_ptr<RandomTree<PixelInstance, ImageFeatureFunction> >,
                     std::vector<const PixelInstance*> >& nodeSamples = samplesPerNode[nodeNr];
@@ -333,7 +336,7 @@ std::vector<SplitFunction<PixelInstance, ImageFeatureFunction> > ImageFeatureEva
                         std::vector<std::vector<const PixelInstance*> > batches = prepare(samples, currentNode,
                                 cuv::host_memory_space());
 
-                        tbb::concurrent_vector<cuv::ndarray<WeightType, cuv::host_memory_space> > perClassHistograms;
+                        std::vector<cuv::ndarray<WeightType, cuv::host_memory_space> > perClassHistograms;
                         utils::Timer timeEvaluate;
 
                         int numThreads = configuration.getNumThreads();
@@ -359,7 +362,10 @@ std::vector<SplitFunction<PixelInstance, ImageFeatureFunction> > ImageFeatureEva
                                     configuration.getThresholds(),
                                     samples, featuresAndThresholdsCPU, perClassHistograms);
 
-                            tbb::parallel_for(tbb::blocked_range<size_t>(0, samples.size(), grainSize), evaluation);
+                           // tbb::parallel_for(tbb::blocked_range<size_t>(0, samples.size(), grainSize), evaluation);
+
+                            evaluation.Run(samples.size());
+
                             currentNode.setTimerValue("featureEvaluation", profile.getSeconds());
 
                             assert(!perClassHistograms.empty());
@@ -487,7 +493,7 @@ std::vector<SplitFunction<PixelInstance, ImageFeatureFunction> > ImageFeatureEva
                     CURFIL_INFO("right split"<<strRight.str());*/
                     bestSplits[nodeNr]= bestFeature;
                 }
-            });
+            //});
 
     size_t totalTransferTimeMicrosecondsEnd = imageCache.getTotalTransferTimeMircoseconds();
     assert(totalTransferTimeMicrosecondsEnd >= totalTransferTimeMicrosecondsStart);
@@ -551,7 +557,7 @@ void ImageFeatureEvaluation::sortFeatures(
 #endif
 
     assert(featuresAndThresholds.thresholds().ndim() == 2);
-    assert(featuresAndThresholds.thresholds().shape(0) == configuration.getThresholds());
+    assert(featuresAndThresholds.thresholperClassHistogramsds().shape(0) == configuration.getThresholds());
     assert(featuresAndThresholds.thresholds().shape(1) == numFeatures);
 
     for (size_t thresh = 0; thresh < configuration.getThresholds(); thresh++) {
@@ -945,7 +951,7 @@ std::vector<PixelInstance> RandomTreeImage::subsampleTrainingDataClassUniform(
     CURFIL_INFO("sampling " << numLabels << " classes. " << samplesPerClass << " samples per class with "
             << configuration.getNumThreads() << " threads from " << trainLabelImages.size() << " images");
 
-    tbb::concurrent_vector<std::map<LabelType, ReservoirSampler<PixelInstance> > > samplersPerLabel;
+    std::vector<std::map<LabelType, ReservoirSampler<PixelInstance> > > samplersPerLabel;
 
     int grainSize = ceil(trainLabelImages.size() / static_cast<double>(configuration.getNumThreads()));
 
@@ -968,8 +974,11 @@ std::vector<PixelInstance> RandomTreeImage::subsampleTrainingDataClassUniform(
         horFlipSetting = NoFlip;
 
     // Parallel Reservoir Sampling
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, trainLabelImages.size(), grainSize),
-            [&](const tbb::blocked_range<size_t>& range) {
+ //   tbb::parallel_for(tbb::blocked_range<size_t>(0, trainLabelImages.size(), grainSize),
+  //          [&](const tbb::blocked_range<size_t>& range) {
+
+    {
+
 
 #ifndef NDEBUG
             size_t numImages = range.end() - range.begin();
@@ -987,7 +996,7 @@ std::vector<PixelInstance> RandomTreeImage::subsampleTrainingDataClassUniform(
             RandomSource randomSource(randomSeed);
             Sampler sampler = randomSource.uniformSampler(randMax);
 
-            for(unsigned int imageNr = range.begin(); imageNr != range.end(); imageNr++) {
+            for(unsigned int imageNr = 0; imageNr != trainLabelImages.size(); imageNr++) {
 
                 const auto image = trainLabelImages[imageNr].getLabelImage();
                 for(int y=0; y < image.getHeight(); y++) {
@@ -1011,7 +1020,8 @@ std::vector<PixelInstance> RandomTreeImage::subsampleTrainingDataClassUniform(
 
             samplersPerLabel.push_back(reservoirSamplers);
 
-        });
+      //  });
+    }
 
     const int randMax = 0x7FFFFFFF;
     Sampler sampler = randomSource.uniformSampler(randMax);

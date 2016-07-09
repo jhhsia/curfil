@@ -25,18 +25,15 @@
 #######################################################################################
 cmake_minimum_required( VERSION 2.6 FATAL_ERROR )
 
-FIND_PACKAGE(CUDA     REQUIRED)
-FIND_PACKAGE(TBB      REQUIRED)
-FIND_PACKAGE(VIGRA    REQUIRED)
+FIND_PACKAGE(CUDA    REQUIRED)
+FIND_PACKAGE(Vigra   REQUIRED)
 FIND_PACKAGE(MDBQ)
 
-SET(CMAKE_CXX_COMPILER g++-4.6)
-
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wformat=2")
+#SET(CMAKE_CXX_COMPILER g++-4.6)
 
 SET(CUDA_NVCC_FLAGS_DEBUG "${CUDA_NVCC_FLAGS_DEBUG} -O0 -G")
 
-ADD_DEFINITIONS("-std=c++0x")
+ADD_DEFINITIONS("-std=c++11")
 
 # http://stackoverflow.com/questions/8450030/can-modern-c-compilers-inline-functions-that-are-defined-in-a-cpp-file
 ADD_DEFINITIONS("-flto")
@@ -66,11 +63,8 @@ MESSAGE(STATUS "CUDA_NVCC_FLAGS: ${CUDA_NVCC_FLAGS}")
 CUDA_INCLUDE_DIRECTORIES( ${THRUST_PATH}       )
 INCLUDE_DIRECTORIES(      ${THRUST_PATH}       )
 
-CUDA_INCLUDE_DIRECTORIES( ${TBB_INCLUDE_DIRS}  )
-INCLUDE_DIRECTORIES(      ${TBB_INCLUDE_DIRS}  )
-
-CUDA_INCLUDE_DIRECTORIES( ${VIGRA_INCLUDE_DIR} )
-INCLUDE_DIRECTORIES(      ${VIGRA_INCLUDE_DIR} )
+CUDA_INCLUDE_DIRECTORIES( ${VIGRA_INCLUDE_DIRS} )
+INCLUDE_DIRECTORIES(      ${VIGRA_INCLUDE_DIRS} )
 
 CUDA_INCLUDE_DIRECTORIES( ${THRUST_PATH}                                )
 INCLUDE_DIRECTORIES(      ${THRUST_PATH}                                )
@@ -88,6 +82,9 @@ ENDIF()
 add_subdirectory(curfil)
 add_subdirectory(ndarray/src/cuv)
 add_subdirectory(tests)
+
+
+MESSAGE(VIGRA_INCLUDE_DIRS ${VIGRA_INCLUDE_DIRS})
 
 # INSTALL(DIRECTORY curfil${LIB_SUFFIX}/
 # 	DESTINATION "include/curfil"

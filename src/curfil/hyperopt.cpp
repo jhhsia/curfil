@@ -34,9 +34,9 @@
 #include <boost/accumulators/statistics/variance.hpp>
 #include <boost/math/distributions/students_t.hpp>
 #include <cmath>
-#include <tbb/mutex.h>
-#include <tbb/parallel_for_each.h>
-#include <tbb/parallel_for.h>
+//#include <tbb/mutex.h>
+//#include <tbb/parallel_for_each.h>
+//#include <tbb/parallel_for.h>
 
 #include "export.h"
 #include "ndarray_ops.h"
@@ -182,8 +182,8 @@ LossFunctionType HyperoptClient::parseLossFunction(const std::string& lossFuncti
 
 const Result HyperoptClient::test(const RandomForestImage& randomForest,
         const std::vector<LabeledRGBDImage>& testImages) {
-
-    tbb::mutex totalMutex;
+#if 1
+   // tbb::mutex totalMutex;
     utils::Average averageAccuracy;
     utils::Average averageAccuracyWithoutVoid;
 
@@ -205,13 +205,13 @@ const Result HyperoptClient::test(const RandomForestImage& randomForest,
 
     ConfusionMatrix totalConfusionMatrix(numClasses, ignoredLabels);
 
-    tbb::parallel_for_each(indices.begin(), indices.end(), [&](const int& i) {
+  //  tbb::parallel_for_each(indices.begin(), indices.end(), [&](const int& i) {
         const RGBDImage& image = testImages[i].getRGBDImage();
         const LabelImage& groundTruth = testImages[i].getLabelImage();
 
         LabelImage prediction = randomForest.predict(image,0,true,useDepthImages);
 
-        tbb::mutex::scoped_lock lock(totalMutex);
+ //       tbb::mutex::scoped_lock lock(totalMutex);
 
         ConfusionMatrix confusionMatrix(numClasses);
         double accuracy = calculatePixelAccuracy(prediction, groundTruth, true, &ignoredLabels);
@@ -221,14 +221,14 @@ const Result HyperoptClient::test(const RandomForestImage& randomForest,
 
         averageAccuracy.addValue(accuracy);
         averageAccuracyWithoutVoid.addValue(accuracyWithoutVoid);
-    });
+//    });
 
-    tbb::mutex::scoped_lock lock(totalMutex);
+  //  tbb::mutex::scoped_lock lock(totalMutex);
     double accuracy = averageAccuracy.getAverage();
     double accuracyWithoutVoid = averageAccuracyWithoutVoid.getAverage();
 
     CURFIL_INFO("accuracy (no void): " << accuracy << " (" << accuracyWithoutVoid << ")");
-
+#endif
     return Result(totalConfusionMatrix, accuracy, accuracyWithoutVoid, lossFunction);
 }
 

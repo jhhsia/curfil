@@ -34,8 +34,7 @@
 #include <iomanip>
 #include <map>
 #include <string>
-#include <tbb/mutex.h>
-#include <tbb/parallel_for.h>
+
 #include <vigra/colorconversions.hxx>
 #include <vigra/imageinfo.hxx>
 #include <vigra/impex.hxx>
@@ -536,9 +535,9 @@ void RGBDImage::calculateIntegral() {
         throw std::runtime_error("image already integrated");
     }
 
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, COLOR_CHANNELS + DEPTH_CHANNELS, 1),
-            [&](const tbb::blocked_range<size_t>& range) {
-                for(unsigned int channelNr = range.begin(); channelNr != range.end(); channelNr++) {
+ //   tbb::parallel_for(tbb::blocked_range<size_t>(0, COLOR_CHANNELS + DEPTH_CHANNELS, 1),
+  //          [&](const tbb::blocked_range<size_t>& range) {
+                for(unsigned int channelNr = 0; channelNr != COLOR_CHANNELS + DEPTH_CHANNELS; channelNr++) {
                     if (channelNr >= COLOR_CHANNELS) {
                         unsigned int depthChannelNr = channelNr - COLOR_CHANNELS;
                         assert(depthChannelNr < DEPTH_CHANNELS);
@@ -549,7 +548,7 @@ void RGBDImage::calculateIntegral() {
                         calculateIntegral(channelView);
                     }
                 }
-            });
+   //         });
 
     integratedColor = true;
     integratedDepth = true;
@@ -560,9 +559,9 @@ void RGBDImage::calculateDerivative() {
         throw std::runtime_error("image not integrated");
     }
 
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, COLOR_CHANNELS + DEPTH_CHANNELS, 1),
-            [&](const tbb::blocked_range<size_t>& range) {
-                for(unsigned int channelNr = range.begin(); channelNr != range.end(); channelNr++) {
+  //  tbb::parallel_for(tbb::blocked_range<size_t>(0, COLOR_CHANNELS + DEPTH_CHANNELS, 1),
+  //          [&](const tbb::blocked_range<size_t>& range) {
+                for(unsigned int channelNr = 0; channelNr != COLOR_CHANNELS + DEPTH_CHANNELS; channelNr++) {
                     if (channelNr >= COLOR_CHANNELS) {
                         unsigned int depthChannelNr = channelNr - COLOR_CHANNELS;
                         assert(depthChannelNr < DEPTH_CHANNELS);
@@ -573,7 +572,7 @@ void RGBDImage::calculateDerivative() {
                         calculateDerivative(channelView);
                     }
                 }
-            });
+    //        });
 
     integratedColor = false;
     integratedDepth = false;
@@ -652,7 +651,7 @@ void RGBDImage::saveColor(const std::string& filename) const {
 }
 
 std::map<RGBColor, LabelType> colors;
-tbb::mutex colorsMutex;
+//tbb::mutex colorsMutex;
 
 LabelType getOrAddColorId(const RGBColor& color, const LabelType& id) {
     if (colors.find(color) == colors.end()) {
@@ -695,12 +694,12 @@ static LabelType getLabelType(const vigra::UInt8RGBImage& labelImage, int x, int
 
 RGBColor LabelImage::decodeLabel(const LabelType& v) {
 
-    tbb::mutex::scoped_lock lock(colorsMutex);
+   // tbb::mutex::scoped_lock lock(colorsMutex);
 
     std::map<RGBColor, LabelType>::iterator it;
     for (it = colors.begin(); it != colors.end(); it++) {
         if (it->second == v) {
-            lock.release();
+           // lock.release();
             assert(it->first.size() == 3);
             return it->first;
         }
@@ -735,7 +734,7 @@ LabelImage::LabelImage(const std::string& filename) :
 
     utils::Timer timer;
 
-    tbb::mutex::scoped_lock lock(colorsMutex);
+//    tbb::mutex::scoped_lock lock(colorsMutex);
 
     for (int x = 0; x < labelImage.width(); ++x) {
         for (int y = 0; y < labelImage.height(); ++y) {
@@ -882,16 +881,16 @@ std::vector<LabeledRGBDImage> loadImages(const std::string& folder, bool useCIEL
 
 	LabelType paddingLabel = getPaddingLabel(ignoredColors);
 
-    tbb::mutex imageCounterMutex;
+ //   tbb::mutex imageCounterMutex;
     size_t numImages = 0;
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, images.size()),
-            [&](const tbb::blocked_range<size_t>& range) {
-                for(size_t i = range.begin(); i != range.end(); i++) {
+ //   tbb::parallel_for(tbb::blocked_range<size_t>(0, images.size()),
+  //          [&](const tbb::blocked_range<size_t>& range) {
+                for(size_t i = 0; i != images.size(); i++) {
 
                     const auto& filename = filenames[i];
                     images[i] = loadImagePair(filename, useCIELab, useDepthImages, useDepthFilling);
                     {
-                        tbb::mutex::scoped_lock lock(imageCounterMutex);
+                       // tbb::mutex::scoped_lock lock(imageCounterMutex);
                         {
 							if (images[i].getWidth() > maxWidth)
 								maxWidth = images[i].getWidth();
@@ -904,23 +903,23 @@ std::vector<LabeledRGBDImage> loadImages(const std::string& folder, bool useCIEL
                     }
 
                 }
-            });
+      //      });
 
 
     bool firstResize = true;
-	tbb::mutex firstresizeMutex;
+//	tbb::mutex firstresizeMutex;
 	size_t imageSizeInMemory = 0;
 	if (!images.empty()) {
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, images.size()),
-				[&](const tbb::blocked_range<size_t>& range) {
-					for(size_t i = range.begin(); i != range.end(); i++) {
+	//	tbb::parallel_for(tbb::blocked_range<size_t>(0, images.size()),
+	//			[&](const tbb::blocked_range<size_t>& range) {
+					for(size_t i = 0; i != images.size(); i++) {
 						const LabeledRGBDImage& image = images[i];
 						if (image.getWidth() != maxWidth || image.getHeight() != maxHeight)
 						{
 							if (firstResize){
 								//added twice so that the lock is only performed the first time (1st),
 								//and the message isn't displayed multiple times after a thread has acquired the lock (2nd)
-								tbb::mutex::scoped_lock lock(firstresizeMutex);
+								//tbb::mutex::scoped_lock lock(firstresizeMutex);
 								{
 									if (firstResize)
 									{	CURFIL_INFO("resizing images to " << maxWidth << "x" << maxHeight);
@@ -952,7 +951,7 @@ std::vector<LabeledRGBDImage> loadImages(const std::string& folder, bool useCIEL
 			                throw std::runtime_error(o.str());
 			            }
 					}
-				});
+			//	});
 
 	}
 

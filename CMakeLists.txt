@@ -37,26 +37,14 @@ ELSE()
 ENDIF()
 
 PROJECT(curfil CXX C)
-SET(CMAKE_MODULE_PATH  ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/CMakeModules )
+
+SET(CMAKE_MODULE_PATH $ENV{FRED_ROOT}/fred-cmake/cmake)
 
 ENABLE_TESTING()
 add_subdirectory(src)
 
-FIND_PACKAGE(Doxygen)
-IF(DOXYGEN_FOUND)
-	CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/doc/Doxyfile.in ${CMAKE_BINARY_DIR}/docs/Doxyfile)
-	ADD_CUSTOM_COMMAND(
-		DEPENDS ${CMAKE_BINARY_DIR}/docs/Doxyfile
-		OUTPUT  ${CMAKE_BINARY_DIR}/docs/html/index.html
-		COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/docs/Doxyfile
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		)
-    ADD_CUSTOM_TARGET(doc DEPENDS ${CMAKE_BINARY_DIR}/docs/html/index.html ${CMAKE_BINARY_DIR}/docs/Doxyfile)
-ENDIF(DOXYGEN_FOUND)
 
-include(GetGitRevisionDescription)
-git_describe(VERSION --tags --dirty --long)
-message(STATUS "GIT VERSION: " ${VERSION})
+message(STATUS "GIT VERSION: " 1.0.0.0.0)
 string(REGEX REPLACE "^v([0-9]+)\\..*" "\\1" VERSION_MAJOR "${VERSION}")
 string(REGEX REPLACE "^v[0-9]+\\.([0-9]+).*" "\\1" VERSION_MINOR "${VERSION}")
 string(REGEX REPLACE "^v[0-9]+\\.[0-9]+-([0-9]+)-.*" "\\1" VERSION_PATCH "${VERSION}")

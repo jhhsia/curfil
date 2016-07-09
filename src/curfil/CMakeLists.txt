@@ -24,8 +24,6 @@
 # SOFTWARE.
 #######################################################################################
 # http://stackoverflow.com/questions/1435953/how-can-i-pass-git-sha1-to-compiler-as-definition-using-cmake/4318642#4318642
-include(GetGitRevisionDescription)
-get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp" @ONLY)
 
@@ -36,9 +34,103 @@ ELSE()
 	SET (MDBQ_LIBRARIES )
 ENDIF()
 
-CUDA_ADD_LIBRARY(curfil SHARED random_tree_image_gpu.cu random_tree.cpp image.cpp utils.cpp ndarray_ops.cpp random_tree_image.cpp random_forest_image.cpp import.cpp export.cpp predict.cpp ndarray_ops.cpp train.cpp ${MDBQ_FILES} "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+CUDA_ADD_LIBRARY(curfil  random_tree_image_gpu.cu random_tree.cpp image.cpp utils.cpp ndarray_ops.cpp random_tree_image.cpp random_forest_image.cpp import.cpp export.cpp predict.cpp ndarray_ops.cpp train.cpp ${MDBQ_FILES} "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
 
-TARGET_LINK_LIBRARIES(curfil ndarray ${CUDA_LIBRARIES} ${VIGRA_IMPEX_LIBRARY} ${TBB_LIBRARIES} ${Boost_LIBRARIES} ${MDBQ_LIBRARIES} pthread)
+MACRO(VIGRA_FIND_PACKAGE package)
+    # parse the args
+    set(COMPONENTS)
+    set(NAMES)
+    set(VERSION_SPEC)
+    set(v VERSION_SPEC)
+    foreach(i ${ARGN})
+        if(${i} MATCHES "^COMPONENTS$")
+            set(v COMPONENTS)
+        elseif(${i} MATCHES "^NAMES$")
+            set(v NAMES)
+        else()
+            set(${v} ${${v}} ${i})
+        endif()
+    endforeach(i)
+
+    SET(${package}_NAMES ${NAMES} ${${package}_NAMES})
+
+    IF(DEFINED COMPONENTS)
+        SET(COMPONENTS COMPONENTS ${COMPONENTS})
+    ENDIF()
+    
+    if(VERSION_SPEC)
+        set(VERSION_MESSAGE " (at least version ${VERSION_SPEC})")
+    else()
+        set(VERSION_MESSAGE)
+    endif()
+    
+    MESSAGE(STATUS "Searching for ${package}${VERSION_MESSAGE}")
+    
+    foreach(path ${DEPENDENCY_SEARCH_PREFIX})
+        if(NOT ${package}_FOUND)
+            IF(${package} STREQUAL "Boost")
+                IF(EXISTS "${path}/boost/config.hpp")
+                    SET(BOOST_INCLUDEDIR ${path}) # boost's default include path
+                ELSE()
+                    SET(BOOST_INCLUDEDIR ${path}/include) # standard include path
+                ENDIF()
+                IF(EXISTS "${path}/stage/lib")
+                    SET(BOOST_LIBRARYDIR ${path}/stage/lib) # boost's default library path
+                ELSE()
+                    SET(BOOST_LIBRARYDIR ${path}/lib) # standard library path
+                ENDIF()
+            ELSE()
+                SET(CMAKE_INCLUDE_PATH ${path}/include)
+                SET(CMAKE_LIBRARY_PATH ${path}/lib)
+            ENDIF()
+            # SET(${package}_INCLUDE_DIR ${package}_INCLUDE_DIR-NOTFOUND)
+            # SET(${package}_LIBRARIES ${package}_LIBRARIES-NOTFOUND)
+            # SET(${package}_LIBRARY ${package}_LIBRARY-NOTFOUND)
+            MESSAGE(STATUS "   in prefix ${path}")
+            FIND_PACKAGE(${package} ${VERSION_SPEC} ${COMPONENTS})
+            IF(${package} STREQUAL "Boost")
+                SET(BOOST_INCLUDEDIR)
+                SET(BOOST_LIBRARYDIR)
+            ELSE()
+                SET(CMAKE_INCLUDE_PATH)
+                SET(CMAKE_LIBRARY_PATH)
+            ENDIF()
+        endif()
+    endforeach(path)
+   
+    # search the package in the default locations if not found 
+    # in the DEPENDENCY_SEARCH_PREFIX 
+    if(NOT ${package}_FOUND)
+        MESSAGE(STATUS "   in default locations")
+        FIND_PACKAGE(${package} ${VERSION_SPEC} ${COMPONENTS})
+    endif()
+    
+ENDMACRO(VIGRA_FIND_PACKAGE)    
+
+
+VIGRA_FIND_PACKAGE(ZLIB)
+VIGRA_FIND_PACKAGE(TIFF NAMES libtiff_i libtiff) # prefer DLL on Windows
+VIGRA_FIND_PACKAGE(JPEG NAMES libjpeg)
+VIGRA_FIND_PACKAGE(PNG)
+VIGRA_FIND_PACKAGE(FFTW3 NAMES libfftw3-3 libfftw-3.3)
+VIGRA_FIND_PACKAGE(FFTW3F NAMES libfftw3f-3 libfftwf-3.3)
+
+
+IF(WITH_OPENEXR)
+    VIGRA_FIND_PACKAGE(OpenEXR)
+ENDIF()
+
+IF(WITH_HDF5)
+    VIGRA_FIND_PACKAGE(HDF5)
+ENDIF()
+
+IF(WITH_LEMON)
+    VIGRA_FIND_PACKAGE(LEMON)
+ENDIF()
+
+
+TARGET_LINK_LIBRARIES(curfil ndarray ${CUDA_LIBRARIES} ${VIGRA_LIBRARIES} ${Boost_LIBRARIES} 
+${MDBQ_LIBRARIES} ${JPEG_LIBRARIES} ${PNG_LIBRARIES}  ${TIFF_LIBRARIES}  ${ZLIB_LIBRARIES} pthread)
 
 INSTALL(TARGETS curfil
 	DESTINATION "lib"

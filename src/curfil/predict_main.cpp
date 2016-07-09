@@ -31,7 +31,7 @@
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <iomanip>
-#include <tbb/task_scheduler_init.h>
+//#include <tbb/task_scheduler_init.h>
 
 #include "import.h"
 #include "random_forest_image.h"
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
     ("folderTesting", po::value<std::string>(&folderTesting)->required(), "folder with test images")
     ("treeFile", po::value<std::vector<std::string> >(&treeFiles)->required(), "serialized tree(s) (JSON)")
     ("histogramBias", po::value<double>(&histogramBias)->default_value(histogramBias), "histogram bias")
-    ("numThreads", po::value<int>(&numThreads)->default_value(tbb::task_scheduler_init::default_num_threads()),
+    ("numThreads", po::value<int>(&numThreads)->default_value(5),
             "number of threads")
     ("mode", po::value<std::string>(&modeString)->default_value(modeString), "mode: 'cpu' or 'gpu'")
     ("deviceId", po::value<int>(&deviceId)->default_value(deviceId), "GPU device id")
@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
     
     utils::Profile::setEnabled(profiling);
 
-    tbb::task_scheduler_init init(numThreads);
+  //  tbb::task_scheduler_init init(numThreads);
 
     std::vector<int> deviceIds(1, deviceId);
 

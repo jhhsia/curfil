@@ -31,7 +31,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include <math.h>
 #include <stdlib.h>
-#include <tbb/task_scheduler_init.h>
+//#include <tbb/task_scheduler_init.h>
 #include <vector>
 #include <vigra/colorconversions.hxx>
 #include <vigra/copyimage.hxx>
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(trainTest) {
     trainImages.push_back(loadImagePair(getFolderTraining() + "/training2_colors.png", useCIELab, useDepthImages, useDepthFilling));
     trainImages.push_back(loadImagePair(getFolderTraining() + "/training3_colors.png", useCIELab, useDepthImages, useDepthFilling));
 
-    tbb::task_scheduler_init init(NUM_THREADS);
+  //  tbb::task_scheduler_init init(NUM_THREADS);
 
     // Train
 
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(trainTestGPU) {
     trainImages.push_back(loadImagePair(getFolderTraining() + "/training2_colors.png", useCIELab, useDepthImages, useDepthFilling));
     trainImages.push_back(loadImagePair(getFolderTraining() + "/training3_colors.png", useCIELab, useDepthImages, useDepthFilling));
 
-    tbb::task_scheduler_init init(NUM_THREADS);
+//    tbb::task_scheduler_init init(NUM_THREADS);
 
     // Train
 

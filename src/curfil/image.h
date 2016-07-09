@@ -360,7 +360,7 @@ public:
     /**
      * Sets a new depth at the given position. Be careful when the image is already integrated!
      */
-    void setDepth(int x, int y, const Depth& depth) {
+    void setDepth(int x, int y, const Depth depth) {
         assert(inImage(x, y));
 
         // invalid depth is set to zero which is necessary for integrating
